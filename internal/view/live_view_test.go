@@ -3,9 +3,27 @@ package view
 import (
 	"testing"
 
+	"github.com/gdamore/tcell/v2"
+	"github.com/one2nc/cloudlens/internal/model"
+	"github.com/one2nc/cloudlens/internal/ui"
 	"github.com/sahilm/fuzzy"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestLiveViewBindsFilterKeys(t *testing.T) {
+	v := NewLiveView(NewApp(), "Describe", model.NewDescribe("ec2", "some/path"))
+	assert.Nil(t, v.Init(makeCtx()))
+
+	actions := v.Actions()
+
+	assert.Equal(t, "Filter Mode", actions[ui.KeySlash].Description)
+	assert.Equal(t, "Next Match", actions[ui.KeyN].Description)
+	assert.Equal(t, "Prev Match", actions[ui.KeyShiftN].Description)
+	assert.Equal(t, "Erase", actions[tcell.KeyDelete].Description)
+	assert.Equal(t, "Filter", actions[tcell.KeyEnter].Description)
+	assert.Equal(t, "Back", actions[tcell.KeyEscape].Description)
+	assert.Len(t, actions, 9)
+}
 
 func TestHighlightMatchesWrapsContiguousMatch(t *testing.T) {
 	lines := []string{`"Name": "cloudlens-demo-web"`}
