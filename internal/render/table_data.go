@@ -1,6 +1,16 @@
 package render
 
-import "sync"
+import (
+	"regexp"
+	"strings"
+	"sync"
+
+	"github.com/sahilm/fuzzy"
+)
+
+const filterFieldSpacer = " "
+
+var tableDataFuzzyRx = regexp.MustCompile(`\A\-f`)
 
 type TableData struct {
 	Header    Header
@@ -49,6 +59,65 @@ func (t *TableData) Customize(cols []string, wide bool) *TableData {
 // Clear clears out the entire table.
 func (t *TableData) Clear() {
 	t.Header, t.RowEvents = Header{}, RowEvents{}
+}
+
+func (t *TableData) Filter(q string) *TableData {
+	td := t.Clone()
+	if q == "" {
+		return td
+	}
+	if tableDataFuzzyRx.MatchString(q) {
+		td.RowEvents = t.fuzzyFilter(strings.TrimSpace(q[2:]))
+		return td
+	}
+	invert := strings.HasPrefix(q, "!")
+	if invert {
+		q = q[1:]
+	}
+	rr, err := t.rxFilter(q, invert)
+	if err != nil {
+		return td
+	}
+	td.RowEvents = rr
+
+	return td
+}
+
+func (t *TableData) rxFilter(q string, invert bool) (RowEvents, error) {
+	rx, err := regexp.Compile(`(?i)` + q)
+	if err != nil {
+		return nil, err
+	}
+	rr := make(RowEvents, 0, len(t.RowEvents))
+	for _, re := range t.RowEvents {
+		ff := make([]string, 0, len(re.Row.Fields))
+		for i, f := range re.Row.Fields {
+			if i < len(t.Header) && t.Header[i].Hide {
+				continue
+			}
+			ff = append(ff, f)
+		}
+		match := rx.MatchString(strings.Join(ff, filterFieldSpacer))
+		if match != invert {
+			rr = append(rr, re)
+		}
+	}
+
+	return rr, nil
+}
+
+func (t *TableData) fuzzyFilter(q string) RowEvents {
+	ids := make([]string, len(t.RowEvents))
+	for i, re := range t.RowEvents {
+		ids[i] = re.Row.ID
+	}
+	matches := fuzzy.Find(q, ids)
+	rr := make(RowEvents, 0, len(matches))
+	for _, m := range matches {
+		rr = append(rr, t.RowEvents[m.Index])
+	}
+
+	return rr
 }
 
 // Clone returns a copy of the table.
