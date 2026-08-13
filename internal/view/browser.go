@@ -124,7 +124,9 @@ func (b *Browser) activateCmd(evt *tcell.EventKey) *tcell.EventKey {
 func (b *Browser) BufferChanged(_, _ string) {}
 
 func (b *Browser) BufferCompleted(text, _ string) {
-	b.Filter(text)
+	b.App().QueueUpdateDraw(func() {
+		b.Filter(text)
+	})
 }
 
 func (b *Browser) BufferActive(state bool, kind model.BufferKind) {
