@@ -83,6 +83,18 @@ func (t *TableData) Filter(q string) *TableData {
 	return td
 }
 
+func (t *TableData) visibleFields(re RowEvent) string {
+	ff := make([]string, 0, len(re.Row.Fields))
+	for i, f := range re.Row.Fields {
+		if i < len(t.Header) && t.Header[i].Hide {
+			continue
+		}
+		ff = append(ff, f)
+	}
+
+	return strings.Join(ff, filterFieldSpacer)
+}
+
 func (t *TableData) rxFilter(q string, invert bool) (RowEvents, error) {
 	rx, err := regexp.Compile(`(?i)` + q)
 	if err != nil {
@@ -90,14 +102,7 @@ func (t *TableData) rxFilter(q string, invert bool) (RowEvents, error) {
 	}
 	rr := make(RowEvents, 0, len(t.RowEvents))
 	for _, re := range t.RowEvents {
-		ff := make([]string, 0, len(re.Row.Fields))
-		for i, f := range re.Row.Fields {
-			if i < len(t.Header) && t.Header[i].Hide {
-				continue
-			}
-			ff = append(ff, f)
-		}
-		match := rx.MatchString(strings.Join(ff, filterFieldSpacer))
+		match := rx.MatchString(t.visibleFields(re))
 		if match != invert {
 			rr = append(rr, re)
 		}
@@ -107,11 +112,11 @@ func (t *TableData) rxFilter(q string, invert bool) (RowEvents, error) {
 }
 
 func (t *TableData) fuzzyFilter(q string) RowEvents {
-	ids := make([]string, len(t.RowEvents))
+	ff := make([]string, len(t.RowEvents))
 	for i, re := range t.RowEvents {
-		ids[i] = re.Row.ID
+		ff[i] = t.visibleFields(re)
 	}
-	matches := fuzzy.Find(q, ids)
+	matches := fuzzy.Find(q, ff)
 	rr := make(RowEvents, 0, len(matches))
 	for _, m := range matches {
 		rr = append(rr, t.RowEvents[m.Index])

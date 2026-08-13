@@ -72,13 +72,21 @@ func TestTableDataFilterInvertShowsNonMatchingRows(t *testing.T) {
 	assert.Equal(t, []string{"i-2"}, rowIDs(got))
 }
 
-func TestTableDataFilterFuzzyMatchesRowID(t *testing.T) {
+func TestTableDataFilterFuzzyMatchesAcrossVisibleColumns(t *testing.T) {
 	td := newTestTableData()
 
-	got := td.Filter("-f i2")
+	got := td.Filter("-f stp")
 
 	assert.Len(t, got.RowEvents, 1)
 	assert.Equal(t, []string{"i-2"}, rowIDs(got))
+}
+
+func TestTableDataFilterFuzzyIgnoresHiddenColumns(t *testing.T) {
+	td := newTestTableData()
+
+	got := td.Filter("-f shh")
+
+	assert.Len(t, got.RowEvents, 0)
 }
 
 func TestTableDataFilterDoesNotMutateOriginal(t *testing.T) {
